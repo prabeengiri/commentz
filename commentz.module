@@ -4,10 +4,35 @@
  */
 
 /**
+ * Implements hook_menu().
+ */
+function commentz_menu() {
+  $items['commentz/%/delete'] = array(
+    'page callback' => 'commentz_delete',
+    'page arguments' => array(1),
+    'access callback' => TRUE,
+    //'access arguments' => array('delete own comment'),
+    'delivery callback' => 'ajax_deliver',
+    'type' => MENU_CALLBACK,
+  );
+  $items['commentz/%/reply'] = array(
+    'page callback' => 'commentz_reply',
+    'page arguments' => array(1),
+    'access callback' => TRUE,
+    'access arguments' => array('access comments'),
+    'delivery callback' => 'ajax_deliver',
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/**
  * Implements hook_preprocess_comment().
  */
 function commentz_preprocess_comment(&$variables, $hook) {
   $variables['theme_hook_suggestions'][] = 'commentz';
+  $variables['picture'] = commentz_get_avatar();
+
 }
 
 
@@ -34,23 +59,46 @@ function commentz_preprocess_comment_wrapper(&$variables, $hook) {
   $variables['theme_hook_suggestions'][] = 'commentz_wrapper';
 }
 
+
+function commentz_get_avatar() {
+  global $user;
+
+  $variables = array(
+    'style_name' => 'avatar',
+    'path' => file_load($user->picture)->uri,
+    'alt' => $user->name,
+    'width' => 36,
+    'height' => 36,
+  );
+  return theme_image_style($variables);
+}
+
 /**
  * Implements hook_FORMID_alter().
  *
  */
 function commentz_form_comment_form_alter(&$form, &$form_state, $form_id) {
+  global $user;
+  //_debug($form);
   $form['subject']['#access'] = FALSE;
   $form['subject']['#required'] = FALSE;
 
+  // Add user picture to comment form.
+  $form['comment_body']['#prefix'] = '<div class="commentz-author-info">'
+      . l( commentz_get_avatar(), 'user/' . $user->uid, array('html' => TRUE))
+      . "<span class='commentz-author-name'>" . l($user->name, 'user/' . $user->uid) . "</span>"
+      . "</div>";
 
-  $form['comment_body']['#type'] = 'textarea';
   $form['comment_body']['#rows'] = '2';
   // Removes title above Comment body but not Star.
-  $form['comment_body'][LANGUAGE_NONE]['0']['#title'] = "";
+  $form['comment_body'][LANGUAGE_NONE]['0']['value']['#title'] = "";
+  $form['comment_body'][LANGUAGE_NONE]['0']['value']['#required'] = FALSE;
+
+  $form['comment_body']['#attributes']['class'][] = 'commentz-reply-area' ;
   // Removes the reqiured star.
   $form['comment_body'][LANGUAGE_NONE]['0']['#required'] = FALSE;
 
-
+  $form['author']['#access'] = FALSE;
   $form['actions']['preview']['#access'] = FALSE;
 
   // Ajaxify comment submit button.
@@ -59,6 +107,9 @@ function commentz_form_comment_form_alter(&$form, &$form_state, $form_id) {
     'wrapper' => 'comment-wrapper',
     'method' => 'append',
     'effect' => 'fade',
+  );
+  $form['#attached']['css'] = array(
+    drupal_get_path('module', 'commentz') . '/commentz.css',
   );
   $form['#validate'][] = 'commentz_validate';
 }
@@ -74,6 +125,167 @@ function commentz_submit($form, &$form_state) {
     return $form;
   }
 
+  $form_state['redirect'] = '';
+  // Unset the preview mode for form submit.
+  unset($form_state['comment']->in_preview);
+  unset($form_state['comment']->preview);
+  $comment = $form_state['comment'];
+  $node = $form['#node'];
+  $comment_build = comment_view($comment, $node);
+  $comment_output = drupal_render($comment_build);
+
+  // Existing comment is edited.
+  if (isset($form['cid']['#value'])) {
+    $commands[] = ajax_command_remove('.better-comments-confirm-' . $comment->cid);
+    $commands[] = ajax_command_replace('.comment-inner-' . $comment->cid, $comment_output);
+  }
+  elseif (isset($form_state['values']['pid'])) {
+    // Else this is a reply.
+    // Append comment to parent wrapper.
+    $comment_output = '</div>' . $comment_output;
+    $commands[] = ajax_command_replace('.indented-' . $comment->pid, $comment_output);
+    // Delete the form.
+    $commands[] = ajax_command_invoke('#' . $form['#id'], 'remove');
+  }
+  // A new comment is created.
+  else {
+    $commands[] = ajax_command_append('.comment-section', $comment_output);
+  }
+  // Add a new form and not from cached.
+  $form_state = array();
+  $form_state['input'] = array();
+  $form_state['build_info']['args'][] = (object) array('nid' => $node->nid);
+  $form_build = drupal_build_form($form['#form_id'], $form_state);
+  $form = drupal_render($form_build);
+  $commands[] = ajax_command_replace('.comment-form', $form);
+  return array('#type' => 'ajax', '#commands' => $commands);
+
+}
+
+function commentz_delete($cid) {
+  $comment = comment_load($cid);
+
+  $form_state = array();
+  $form_state['build_info']['args'] = array($comment);
+  // Load this using form_load_include so it's cached properly and works in the
+  // ajax callback.
+  form_load_include($form_state, 'inc', 'comment', 'comment.admin');
+  $form_build = drupal_get_form('comment_confirm_delete', $comment);
+
+  $form_build['#attributes']['class'] = 'commentz-confirm';
+  $form = drupal_render($form_build);
+  $commands[] = ajax_command_append('.comment-inner-' . $cid, $form);
+  return array('#type' => 'ajax', '#commands' => $commands);
+}
+
+/**
+ * Cancel the delete option and resend the form.
+ */
+function commentz_delete_cancel($cid) {
+  $commands[] = ajax_command_remove('#comment-wrap-' . $cid . '>.commentz-confirm');
+  return array('#type' => 'ajax', '#commands' => $commands);
+}
+
+/**
+ * Implements hook_comments_comment_view().
+ */
+function commentz_comment_view($comment, $view_mode, $langcode) {
+  // Reply.
+  if (isset($comment->content['links']['comment']['#links']['comment-reply'])) {
+    $comment->content['links']['comment']['#links']['comment-reply']['attributes']['class'] = array('use-ajax', 'better-comments-reply');
+    $comment->content['links']['comment']['#links']['comment-reply']['attributes']['id'] = array('reply-' . $comment->cid);
+    $comment->content['links']['comment']['#links']['comment-reply']['href'] = 'commentz/' . $comment->cid . '/reply';
+  }
+  // Edit.
+  if (isset($comment->content['links']['comment']['#links']['comment-edit'])) {
+    $comment->content['links']['comment']['#links']['comment-edit']['attributes']['class'] = array('use-ajax');
+    $comment->content['links']['comment']['#links']['comment-edit']['href'] = 'better_comments/' . $comment->cid . '/edit';
+  }
+  // Delete.
+  if (1 == 1 || isset($comment->content['links']['comment']['#links']['comment-delete']) || better_comments_delete_access($comment)) {
+    $comment->content['links']['comment']['#links']['comment-delete']['attributes']['class'] = array('use-ajax', 'better-comments-delete');
+    $comment->content['links']['comment']['#links']['comment-delete']['attributes']['id'] = array('delete-' . $comment->cid);
+    $comment->content['links']['comment']['#links']['comment-delete']['href'] = 'commentz/' . $comment->cid . '/delete';
+    $comment->content['links']['comment']['#links']['comment-delete']['title'] = t('delete');
+  }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function commentz_form_comment_confirm_delete_alter(&$form, &$form_state, &$form_id) {
+  form_load_include($form_state, 'inc', 'comment', 'comment.admin');
+  $comment = $form['#comment'];
+  $form['actions']['submit']['#ajax'] = array(
+    'callback' => 'commentz_confirm_delete_submit',
+    'wrapper' => 'comment-wrapper',
+    'method' => 'append',
+    'effect' => 'fade',
+  );
+  $form['actions']['cancel'] = array(
+    '#markup' => l(t('Cancel'), 'better_comments/delete/' . $comment->cid . '/cancel', array(
+      'attributes' => array(
+        'class' => array(
+          'use-ajax', 'button','delete-cancel'),
+        'id' => array(
+          'delete-cancel-' . $comment->cid)))),
+    '#weight' => 21,
+  );
+  return $form;
+}
+
+/**
+ * Delete the comment by calling comment_delete.
+ */
+function commentz_confirm_delete_submit(&$form, &$form_state) {
+  form_load_include($form_state, 'inc', 'comment', 'comment.admin');
+  $comment = $form['#comment'];
+  // Delete the comment and its replies.
+  comment_delete($comment->cid);
+  // drupal_set_message(t('The comment and all its replies have been.'));
+  watchdog('content', 'Deleted comment @cid and its replies.', array('@cid' => $comment->cid));
+  // Clear the cache so an anonymous user sees that his comment was deleted.
+  cache_clear_all();
+  $commands[] = ajax_command_remove('.comment-inner-' . $comment->cid);
+  return array('#type' => 'ajax', '#commands' => $commands);
+}
+
+function commentz_reply($pid) {
+  // If there is a pid this is a reply to a comment.
+  if ($pid) {
+    if (!user_access('post comments')) {
+      return MENU_ACCESS_DENIED;
+    }
+    // Make sure the comment is valid and published.
+    if (!($comments = comment_load_multiple(array($pid), array('status' => COMMENT_PUBLISHED)))) {
+      return MENU_NOT_FOUND;
+    }
+    $comment = $comments[$pid];
+    $node = node_load($comment->nid);
+    // Make sure the comment belongs to this node.
+    if ($comment->nid != $node->nid) {
+      return MENU_NOT_FOUND;
+    }
+  }
+  // Build form.
+  $form_build = drupal_get_form("comment_node_{$node->type}_form", (object) array('nid' => $node->nid, 'pid' => $pid));
+  // Offer 'cancel' link for reply. This will just remove the reply form so
+  // there is no callback.
+  $form_build['actions']['cancel'] = array(
+    '#markup' => l(t('Cancel'), 'commentz/reply/' . $pid . '/cancel', array(
+      'attributes' => array(
+        'class' => array(
+          'use-ajax', 'button', 'reply-cancel'),
+        'id' => array(
+          'cancel-' . $pid)))),
+    '#weight' => 21,
+  );
+
+  $form['#validate'][] = 'better_comments_validate';
+  $form = drupal_render($form_build);
+  $form = '<div class="indented-' . $pid . '">' . $form . '</div>';
+  $commands[] = ajax_command_append('.comment-inner-' . $pid, $form);
+  return array('#type' => 'ajax', '#commands' => $commands);
 }
 
 function _debug($data, $die = true) {

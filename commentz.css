@@ -1,0 +1,48 @@
+.indented {
+	margin-left:50px;
+}
+
+.commentz-reply-area textarea {
+  height:55px !important;
+}
+
+span.commentz-author-name {
+	margin-left:5px;
+}
+
+span.commentz-author-name a{
+  font-size:17px;
+  vertical-align:top;
+}
+.commentz-author-info {
+	padding:5px;
+}
+.comment-form {
+	background-color:#FAFAFA;
+  border:1px solid #CCCCCC;
+  padding:5px !important;
+  border-radius:5px;
+}
+.commentz-reply-area.form-group {
+	margin-bottom:0px;
+}
+
+.commentz-header-avatar {
+	float:left;
+}
+.commentz-header-info {
+  float:left;
+  margin-left:5px;
+}
+.commentz-header {
+	padding:5px;
+}
+.commentz-content {
+	padding:8px;
+}
+.commentz-header-created {
+	color:#999;
+	font-size:13px;
+	font-weight:bold;
+	padding-top:3px;
+}
