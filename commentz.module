@@ -1,0 +1,85 @@
+<?php
+/**
+ * @file
+ */
+
+/**
+ * Implements hook_preprocess_comment().
+ */
+function commentz_preprocess_comment(&$variables, $hook) {
+  $variables['theme_hook_suggestions'][] = 'commentz';
+}
+
+
+/**
+ * Implements hook_theme().
+ */
+function commentz_theme($existing, $type, $theme, $path) {
+  return array(
+    'commentz' => array(
+      'template' => 'templates/commentz',
+      'render element' => 'comment'
+    ),
+    'commentz_wrapper' => array(
+      'template' => 'templates/commentz-wrapper',
+      'render element' => 'comment-wrapper'
+    ),
+  );
+}
+
+/**
+ * Implement preprocess comment wrapper.
+ */
+function commentz_preprocess_comment_wrapper(&$variables, $hook) {
+  $variables['theme_hook_suggestions'][] = 'commentz_wrapper';
+}
+
+/**
+ * Implements hook_FORMID_alter().
+ *
+ */
+function commentz_form_comment_form_alter(&$form, &$form_state, $form_id) {
+  $form['subject']['#access'] = FALSE;
+  $form['subject']['#required'] = FALSE;
+
+
+  $form['comment_body']['#type'] = 'textarea';
+  $form['comment_body']['#rows'] = '2';
+  // Removes title above Comment body but not Star.
+  $form['comment_body'][LANGUAGE_NONE]['0']['#title'] = "";
+  // Removes the reqiured star.
+  $form['comment_body'][LANGUAGE_NONE]['0']['#required'] = FALSE;
+
+
+  $form['actions']['preview']['#access'] = FALSE;
+
+  // Ajaxify comment submit button.
+  $form['actions']['submit']['#ajax'] = array(
+    'callback' => 'commentz_submit',
+    'wrapper' => 'comment-wrapper',
+    'method' => 'append',
+    'effect' => 'fade',
+  );
+  $form['#validate'][] = 'commentz_validate';
+}
+
+function commentz_validate($form, &$form_state) {
+  if (empty($form_state['values']['comment_body'][LANGUAGE_NONE]['0']['value'])) {
+    form_set_error('comment_body', t('The comment body cannot be empty.'));
+  }
+}
+
+function commentz_submit($form, &$form_state) {
+  if (form_get_errors()) {
+    return $form;
+  }
+
+}
+
+function _debug($data, $die = true) {
+  echo "<pre>";
+  print_r($data);
+  echo "</pre>";
+  if ($die)
+    die();
+}
