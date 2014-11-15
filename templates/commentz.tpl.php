@@ -5,12 +5,12 @@
  * Default theme implementation for comments.
  */
 ?>
-<div class="comment-inner-<?php print $comment->cid; ?> clearfix"<?php  print $attributes; ?>>
+<div class="commentz-inner-<?php print $comment->cid; ?> clearfix commentz-box"<?php  print $attributes; ?>>
   <div class="commentz-body">
     <div class='commentz-header'>
       <div class='commentz-header-avatar'><?php print $picture; ?></div>
       <div class='commentz-header-info'>
-        <div><?php print $author; ?></div>
+        <div class='commentz-header-username'><?php print $author; ?></div>
         <div class='commentz-header-created'><?php print $created; ?> </div>
       </div>
       <?php print render($title_preffix); ?>
@@ -32,8 +32,10 @@
             <?php print $signature ?>
           </div>
         <?php endif; ?>
-
       </div>
     </div>
+  </div>
+  <div class='commentz-response'>
+    <?php print $commentz_response_wrapper;?>
   </div>
 </div>

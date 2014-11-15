@@ -27,16 +27,6 @@ function commentz_menu() {
 }
 
 /**
- * Implements hook_preprocess_comment().
- */
-function commentz_preprocess_comment(&$variables, $hook) {
-  $variables['theme_hook_suggestions'][] = 'commentz';
-  $variables['picture'] = commentz_get_avatar();
-
-}
-
-
-/**
  * Implements hook_theme().
  */
 function commentz_theme($existing, $type, $theme, $path) {
@@ -49,16 +39,45 @@ function commentz_theme($existing, $type, $theme, $path) {
       'template' => 'templates/commentz-wrapper',
       'render element' => 'comment-wrapper'
     ),
+    'commentz_response' => array(
+      'template' => 'templates/commentz-response',
+      'render element' => 'elements'
+    ),
+    'commentz_response_wrapper' => array(
+      'template' => 'templates/commentz-response-wrapper',
+      'render element' => 'page'
+    )
   );
 }
+
+/**
+ * Implements hook_preprocess_comment().
+ */
+function commentz_preprocess_comment(&$variables, $hook) {
+  $variables['theme_hook_suggestions'][] = 'commentz';
+  $variables['picture'] = commentz_get_avatar();
+  $interval = time() - $variables['elements']['#comment']->created;
+  $variables['created'] = 'Written ' . format_interval($interval, 1) . t(' ago');
+  $variables['commentz_response_wrapper'] = theme('commentz_response');
+}
+
+
 
 /**
  * Implement preprocess comment wrapper.
  */
 function commentz_preprocess_comment_wrapper(&$variables, $hook) {
   $variables['theme_hook_suggestions'][] = 'commentz_wrapper';
+  $variables['comment_count'] = $variables['node']->comment_count;
 }
 
+function commentz_preprocess_commentz_response(&$variables) {
+  _debug($variables);
+}
+
+function commentz_preprocess_commentz_response_wrapper(&$variables) {
+  //_debug($variables);
+}
 
 function commentz_get_avatar() {
   global $user;
@@ -84,10 +103,12 @@ function commentz_form_comment_form_alter(&$form, &$form_state, $form_id) {
   $form['subject']['#required'] = FALSE;
 
   // Add user picture to comment form.
+  /*
   $form['comment_body']['#prefix'] = '<div class="commentz-author-info">'
       . l( commentz_get_avatar(), 'user/' . $user->uid, array('html' => TRUE))
       . "<span class='commentz-author-name'>" . l($user->name, 'user/' . $user->uid) . "</span>"
       . "</div>";
+  */
 
   $form['comment_body']['#rows'] = '2';
   // Removes title above Comment body but not Star.
@@ -137,7 +158,7 @@ function commentz_submit($form, &$form_state) {
   // Existing comment is edited.
   if (isset($form['cid']['#value'])) {
     $commands[] = ajax_command_remove('.better-comments-confirm-' . $comment->cid);
-    $commands[] = ajax_command_replace('.comment-inner-' . $comment->cid, $comment_output);
+    $commands[] = ajax_command_replace('.commentz-inner-' . $comment->cid, $comment_output);
   }
   elseif (isset($form_state['values']['pid'])) {
     // Else this is a reply.
@@ -149,7 +170,7 @@ function commentz_submit($form, &$form_state) {
   }
   // A new comment is created.
   else {
-    $commands[] = ajax_command_append('.comment-section', $comment_output);
+    $commands[] = ajax_command_append('.commentz-section', $comment_output);
   }
   // Add a new form and not from cached.
   $form_state = array();
@@ -174,7 +195,7 @@ function commentz_delete($cid) {
 
   $form_build['#attributes']['class'] = 'commentz-confirm';
   $form = drupal_render($form_build);
-  $commands[] = ajax_command_append('.comment-inner-' . $cid, $form);
+  $commands[] = ajax_command_append('.commentz-inner-' . $cid, $form);
   return array('#type' => 'ajax', '#commands' => $commands);
 }
 
@@ -195,6 +216,7 @@ function commentz_comment_view($comment, $view_mode, $langcode) {
     $comment->content['links']['comment']['#links']['comment-reply']['attributes']['class'] = array('use-ajax', 'better-comments-reply');
     $comment->content['links']['comment']['#links']['comment-reply']['attributes']['id'] = array('reply-' . $comment->cid);
     $comment->content['links']['comment']['#links']['comment-reply']['href'] = 'commentz/' . $comment->cid . '/reply';
+    unset($comment->content['links']['comment']['#links']['comment-reply']);
   }
   // Edit.
   if (isset($comment->content['links']['comment']['#links']['comment-edit'])) {
@@ -210,6 +232,7 @@ function commentz_comment_view($comment, $view_mode, $langcode) {
   }
 }
 
+
 /**
  * Implements hook_form_FORM_ID_alter().
  */
@@ -222,14 +245,10 @@ function commentz_form_comment_confirm_delete_alter(&$form, &$form_state, &$form
     'method' => 'append',
     'effect' => 'fade',
   );
+
+  $form_id = $form['#id'];
   $form['actions']['cancel'] = array(
-    '#markup' => l(t('Cancel'), 'better_comments/delete/' . $comment->cid . '/cancel', array(
-      'attributes' => array(
-        'class' => array(
-          'use-ajax', 'button','delete-cancel'),
-        'id' => array(
-          'delete-cancel-' . $comment->cid)))),
-    '#weight' => 21,
+    '#markup' => "<a href='javascript:;' class='commentz-delte-confirm'>" . t('Cancel') . "</a>",
   );
   return $form;
 }
@@ -246,7 +265,7 @@ function commentz_confirm_delete_submit(&$form, &$form_state) {
   watchdog('content', 'Deleted comment @cid and its replies.', array('@cid' => $comment->cid));
   // Clear the cache so an anonymous user sees that his comment was deleted.
   cache_clear_all();
-  $commands[] = ajax_command_remove('.comment-inner-' . $comment->cid);
+  $commands[] = ajax_command_remove('.commentz-inner-' . $comment->cid);
   return array('#type' => 'ajax', '#commands' => $commands);
 }
 
@@ -284,9 +303,18 @@ function commentz_reply($pid) {
   $form['#validate'][] = 'better_comments_validate';
   $form = drupal_render($form_build);
   $form = '<div class="indented-' . $pid . '">' . $form . '</div>';
-  $commands[] = ajax_command_append('.comment-inner-' . $pid, $form);
+  $commands[] = ajax_command_append('.commentz-inner-' . $pid, $form);
   return array('#type' => 'ajax', '#commands' => $commands);
 }
+
+function commentz_comment_response($pid) {
+  $result = db_select('comment')
+    ->field($cid)
+    ->condition('pid', $pid ,'=')
+    ->execute();
+}
+
+
 
 function _debug($data, $die = true) {
   echo "<pre>";

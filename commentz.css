@@ -2,6 +2,15 @@
 	margin-left:50px;
 }
 
+.commentz-counter {
+  text-transform:uppercase;
+  color:#666666;
+  font-size:13px;
+  font-weight:bold;
+  margin-top:10px;
+  margin-bottom:-3px;
+}
+
 .commentz-reply-area textarea {
   height:55px !important;
 }
@@ -30,19 +39,57 @@ span.commentz-author-name a{
 .commentz-header-avatar {
 	float:left;
 }
+.commentz-box {
+	border-top:1px solid #AAAAAA;
+	padding-top:10px;
+	margin-top:10px;
+}
 .commentz-header-info {
   float:left;
-  margin-left:5px;
+  margin-left:8px;
+}
+.commentz-header-username a {
+	color: black !important;
+	font-size:16px !important;
+	font-weight:bold;
+}
+.commentz-header-username a:hover {
+  text-decoration:underline;
 }
 .commentz-header {
 	padding:5px;
 }
 .commentz-content {
-	padding:8px;
+	padding-top:3px;
 }
 .commentz-header-created {
 	color:#999;
-	font-size:13px;
-	font-weight:bold;
+	font-size:14px;
 	padding-top:3px;
+}
+.commentz-data ul li a {
+	color:#999;
+}
+.commentz-data ul li a:hover {
+  text-decoration:underline;
+}
+.commentz-confirm {
+	background-color:#F2F2F2;
+	border: 1px solid #CCCCCC;
+	color:#666666;
+	padding:5px;
+	border-radius:5px;
+}
+
+/******************* CommentZ Response *****************/
+.commentz-response-wrapper {
+	border-top: 1px dotted gray;
+	font-size:13px;
+}
+.commentz-response-inner {
+  padding:3px 0 3px 22px;
+  
+  margin:3px 0;
+  color:#333333;	
+  border-bottom: 1px dotted gray;
 }
