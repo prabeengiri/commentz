@@ -87,9 +87,12 @@ span.commentz-author-name a{
 	font-size:13px;
 }
 .commentz-response-inner {
-  padding:3px 0 3px 22px;
-  
   margin:3px 0;
   color:#333333;	
-  border-bottom: 1px dotted gray;
+  border-top: 1px dotted gray;
+  padding:4px 0;
+  padding-left:30px;
+}
+.commentz-response-created {
+  color:gray;	
 }

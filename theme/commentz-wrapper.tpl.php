@@ -36,17 +36,17 @@
  * @ingroup themeable
  */
 ?>
-<div id="comments" class="<?php print $classes; ?>"<?php print $attributes; ?>>
+<div id="commentz" class="<?php print $classes; ?>"<?php print $attributes; ?>>
 
-  <?php if ($content['comments'] && $node->type != 'forum'): ?>
-    <div class="commentz-counter"><?php print $comment_count; ?> <?php  print t('Comments'); ?></div>
+  <?php if (1== 1 || $node->type != 'forum'): ?>
+  <div class="commentz-counter"><?php print $count; ?> <?php  print t('Responses'); ?></div>
   <?php endif; ?>
 
   <div class="comment-section">
-  <?php print render($content['comments']); ?>
+    <?php print render($commentzs); ?>
   </div>
 
-  <?php if ($content['comment_form']): ?>
-    <?php print render($content['comment_form']); ?>
+  <?php if ($commentz_form): ?>
+    <?php print render($commentz_form); ?>
   <?php endif;?>
 </div>
