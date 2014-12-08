@@ -42,11 +42,11 @@
   <div class="commentz-counter"><?php print $count; ?> <?php  print t('Responses'); ?></div>
   <?php endif; ?>
 
-  <div class="comment-section">
+  <div class="commentz-section">
     <?php print render($commentzs); ?>
   </div>
 
   <?php if ($commentz_form): ?>
-    <?php print render($commentz_form); ?>
+    <div class='commentz-form'> <?php print render($commentz_form); ?> </div>
   <?php endif;?>
 </div>

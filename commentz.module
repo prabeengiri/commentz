@@ -6,15 +6,36 @@
 // Include theme definiation and preprocess
 module_load_include('inc', 'commentz', 'theme/theme');
 
+// @todo If node is supposed to see commentz
+module_load_include('inc', 'commentz', 'commentz.form');
+
 /**
  * Implements hook_menu().
  */
 function commentz_menu() {
   $items['commentz/%/delete'] = array(
-    'page callback' => 'commentz_delete',
+    'page callback' => 'commentz_delete_page',
     'page arguments' => array(1),
     'access callback' => TRUE,
     //'access arguments' => array('delete own comment'),
+    'delivery callback' => 'ajax_deliver',
+    'type' => MENU_CALLBACK,
+    'file' => 'commentz.pages.inc',
+  );
+  $items['commentz/%/edit'] = array(
+    'page callback' => 'commentz_edit_page',
+    'page arguments' => array(1),
+    'access callback' => TRUE,
+    //'access arguments' => array('delete own comment'),
+    'delivery callback' => 'ajax_deliver',
+    'type' => MENU_CALLBACK,
+    'file' => 'commentz.pages.inc',
+  );
+  $items['commentz/response/%/delete'] = array(
+    'page callback' => 'commentz_response_delete_page',
+    'page arguments' => array(2),
+    'access callback' => TRUE,
+    //'access arguments' => array('delete own commentz response'),
     'delivery callback' => 'ajax_deliver',
     'type' => MENU_CALLBACK,
     'file' => 'commentz.pages.inc',
@@ -29,6 +50,13 @@ function commentz_menu() {
     'file' => 'commentz.pages.inc',
   );
   return $items;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function commentz_permission() {
+
 }
 
 /**
@@ -78,90 +106,21 @@ function commentz_node_additions($node) {
     '#node' => $node,
     'commentzs' => array(),
     'commentz_form' => array(),
-    '#attached' => array('css' => array(drupal_get_path('module', 'commentz') . '/commentz.css'))
+    '#attached' => array(
+      'css' => array(drupal_get_path('module', 'commentz') . '/commentz.css'),
+      'js' => array(drupal_get_path('module', 'commentz') . '/commentz.js')
+    )
   );
   $additions['commentz_form'] = $build;
 
   return $additions;
 }
 
-/**
- * Comment Form.
- */
-function commentz_form($form, $form_state, $node) {
-  $form['body'] = array(
-  	'#type' => 'textarea',
-    '#title' => "",
-    '#rows' => 2,
-    '#attributes' => array('placeholder' => t('Enter comment'))
-  );
-
-  $form['nid'] = array(
-  	'#type' => 'value',
-    '#value' => $node->nid,
-  );
-  $form['pid'] = array(
-    '#type' => 'value',
-    '#value' => 0,
-  );
-
-  $form['submit'] = array(
-    '#type' => 'submit',
-    '#value' => "Comment",
-    '#ajax' => array(
-      'callback' => 'commentz_submit',
-      'wrapper' => 'comment-wrapper',
-      'method' => 'append',
-      'effect' => 'fade',
-    ),
-    '#attributes' => array('class' => array('btn-primary')),
-  );
-  return $form;
-}
-
-function commentz_prepare_submit($form, &$form_state, $cid = NULL) {
-  global $user, $language;
-
-  $commentz = new stdClass;
-
-  $commentz->uid = $user->uid;
-  $commentz->name = $user->name;
-  $commentz->mail = $user->mail;
-  // @todo set proper language
-  $commentz->language = LANGUAGE_NONE;
-  $commentz->changed = REQUEST_TIME;
-
-  if ($cid) {
-    $commentz->cid = $cid;
-  } else {
-    $commentz->created = REQUEST_TIME;
-  }
-
-  if ($pid = $form_state['values']['pid'])
-    $commentz->pid = $pid;
-  else
-    $commentz->pid = 0;
-
-  $commentz->nid = $form_state['values']['nid'];
-  $commentz->body = $form_state['values']['body'];
-  return $commentz;
-}
-
-function commentz_form_validate($form, &$form_state) {
-  if (empty($form_state['values']['body'])) {
-    form_set_error('body', '');
-  }
-}
-
-function commentz_form_submit($form, &$form_state) {
-  $commentz = commentz_prepare_submit($form, $form_state);
-  commentz_save($commentz);
-}
 
 function commentz_save($commentz) {
   $entity = entity_create('commentz', (array) $commentz);
   $entity_wrapper = entity_metadata_wrapper('commentz', $entity);
-  $entity_wrapper->save();
+  return $entity_wrapper->save();
 }
 
 function commentz_load_all($nid) {
@@ -196,6 +155,7 @@ function commentz_view($commentz, $node) {
   if (!empty($commentz['responses'])) {
     $build['commentz_responses'] = commentz_response_view_multiple($commentz['responses']);
   }
+  $build['commentz_response_form'] = drupal_get_form('commentz_response_form', $commentz);
   return $build;
 }
 
@@ -216,17 +176,29 @@ function commentz_response_view_multiple($commentz_responses) {
   return $build;
 }
 
+
+
 function commentz_response_view($response) {
   $build = array(
     '#theme' => 'commentz_response',
     '#response' => $response,
   );
+
+  global $user;
+  // User can delete only their own response.
+  if ($user->uid == $response['uid']) {
+    $build['#delete_link'] = theme('commentz_response_delete_link', array('response_id' => $response['cid']));
+  } else {
+    $build['#delete_link'] = NULL;
+  }
   return $build;
 }
 
-function commentz_get_avatar() {
-  // @todo get the avatar by user id.
+function commentz_get_avatar($uid) {
+
+  $user = user_load((int)$uid);
   global $user;
+  // @todo get the avatar by user id.
   $variables = array(
     'style_name' => 'commentz_avatar',
     'path' => file_load($user->picture)->uri,
@@ -253,49 +225,57 @@ function commentz_links($commentz, $node) {
   $links = array();
   // @todo add right permissions.
   if (1==1 || user_access('administer comments') && user_access('post comments')) {
-    $links['comment-delete'] = array(
-      'title' => t('Delete'),
+    $links['commentz-delete'] = array(
+      'title' => t('delete'),
       'href' => "commentz/" . $commentz['cid'] . "/delete",
       'html' => TRUE,
+      'attributes' => array('class' => array('use-ajax'))
     );
-    $links['comment-edit'] = array(
-      'title' => t('Edit'),
+    $links['commentz-edit'] = array(
+      'title' => t('edit'),
       'href' => "commentz/" . $commentz['cid'] . "/edit",
       'html' => TRUE,
+      'attributes' => array('class' => array('use-ajax'))
+    );
+
+    $links['commentz-add-response'] = array(
+      'title' => t('add a response'),
+      'href' => "javascript:;",
+      'html' => FALSE,
+      'external' => TRUE,
+      'attributes' => array('class' => array('commentz-add-response-link'))
     );
   }
   return $links;
 }
 
+function commentz_response_delete_link($response_id) {
+  $links['commentz-delete-response'] = array(
+    'title' => t('delete'),
+    'href' => "commentz/response/" . $response_id . "/delete",
+    'attributes' => array('class' => array('commentz-delete-response-link'))
+  );
+}
+
 function commentz_load($cid) {
   $commentz = entity_load('commentz', array($cid));
-  return reset($commentz);
+  return (array) reset($commentz);
 }
 
 function commentz_delete($cid) {
-  return db_delete('commentz')
-  ->condition('cid', $cid, '=')
-  ->execute();
+  db_delete('commentz')
+    ->condition('cid', $cid, '=')
+    ->execute();
+
+  db_delete('commentz')
+    ->condition('pid', $cid, '=')
+    ->execute();
 }
 
-/**
- * Form builder; Builds the confirmation form for deleting a single comment.
- *
- * @ingroup forms
- * @see comment_confirm_delete_submit()
- */
-function commentz_confirm_delete($form, &$form_state, $commentz) {
-  $form['#comment'] = $commentz;
-  // Always provide entity id in the same form key as in the entity edit form.
-  $form['cid'] = array('#type' => 'value', '#value' => $commentz->cid);
-  return confirm_form(
-      $form,
-      t('Are you sure you want to delete the comment %title?', array('%title' => $comment->body)),
-      'node/' . $comment->nid,
-      t('Any replies to this comment will be lost. This action cannot be undone.'),
-      t('Delete'),
-      t('Cancel'),
-      'comment_confirm_delete');
+function commentz_response_delete($response_id) {
+  db_delete('commentz')
+  ->condition('cid', $response_id, '=')
+  ->execute();
 }
 
 function _debug($data, $die = true) {

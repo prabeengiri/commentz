@@ -5,7 +5,7 @@
  * Default theme implementation for comments.
  */
 ?>
- <div class="commentz-inner-<?php print $comment['comment_id']; ?> clearfix commentz-box">
+ <div id ="commentz-inner-<?php print $comment['comment_id']; ?>"  class="clearfix commentz-box">
   <div class="commentz-body">
     <div class='commentz-header'>
       <div class='commentz-header-avatar'><?php print $comment['avatar']; ?></div>
@@ -15,14 +15,19 @@
       </div>
       <div class='clearfix'></div>
     </div>
-    <div>
-      <?php print $comment['content'];?>
+    <div class='commentz-content-wrapper'>
+      <div class='commentz-content'> <?php print $comment['content'];?> </div>
     </div>
-    <div class="commentz-data">
+    <div class="commentz-links">
       <span><?php print render($comment['links']) ?></span>
+      <div id="commentz-delete-confirm-<?php print $comment['comment_id'];?>" class='commentz-delete-confirm'></div>
     </div>
-    <div>
-      <?php print render($comment['responses']); ?>
+    <div class='commentz-response-wrapper'>
+      <div id='commentz-responses-<?php print $comment['comment_id']?>'>
+        <?php print render($comment['responses']); ?>
+      </div>
+      <?php print render($commentz['commentz_response_form']); ?>
     </div>
+
   </div>
 </div>

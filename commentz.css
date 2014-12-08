@@ -67,10 +67,10 @@ span.commentz-author-name a{
 	font-size:14px;
 	padding-top:3px;
 }
-.commentz-data ul li a {
+.commentz-links ul li a {
 	color:#999;
 }
-.commentz-data ul li a:hover {
+.commentz-links ul li a:hover {
   text-decoration:underline;
 }
 .commentz-confirm {
@@ -80,19 +80,36 @@ span.commentz-author-name a{
 	padding:5px;
 	border-radius:5px;
 }
-
-/******************* CommentZ Response *****************/
-.commentz-response-wrapper {
-	border-top: 1px dotted gray;
-	font-size:13px;
+.commentz-gray {
+	color:gray;
 }
+.commentz-form {
+	margin-top:5px;
+	padding:15px 5px 5px 5px;
+  border-top: 1px solid #CCCCCC;
+  background-color: #EEEEEE;
+}
+form#commentz-form {
+	margin:5px;
+}
+/******************* CommentZ Response *****************/
 .commentz-response-inner {
   margin:3px 0;
   color:#333333;	
-  border-top: 1px dotted gray;
+  border-top: 1px dotted #AAAAAA;
   padding:4px 0;
   padding-left:30px;
+  font-size:13px;
+  color:#555555;
 }
 .commentz-response-created {
   color:gray;	
+}
+.commentz-response-form{
+	padding-top:10px;
+	display:none;
+}
+.commentz-response-delete-link {
+	vertical-align:middle;
+	display:none;
 }
