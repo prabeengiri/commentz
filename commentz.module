@@ -56,7 +56,31 @@ function commentz_menu() {
  * Implements hook_permission().
  */
 function commentz_permission() {
+  return array(
+    'administer commentz' => array(
+      'title' => t('Administer commentz and commentz settings'),
+    ),
+    'access commentz' => array(
+      'title' => t('View commentz'),
+    ),
+    'post commentz' => array(
+      'title' => t('Post commentz'),
+    ),
+    'edit commentz' => array(
+      'title' => t('Edit commentz'),
+    ),
+    'edit own commentz' => array(
+      'title' => t('Edit own commentz'),
+    ),
 
+    'delete own commentz' => array(
+      'title' => t('Delete own commentz'),
+    ),
+    'delete commentz' => array(
+      'title' => t('Delete commentz'),
+    ),
+
+  );
 }
 
 /**
@@ -87,6 +111,11 @@ function commentz_node_view($node) {
 }
 
 function commentz_node_additions($node) {
+
+  if (!user_access('access commentz')) {
+    return array();
+  }
+
   $additions = array();
   // @todo correct permissions
   if (1==1) {
@@ -97,10 +126,11 @@ function commentz_node_additions($node) {
     }
   }
 
-  if (user_access('post commentz') || 1==1) {
+  if (user_access('post commentz')) {
     $build = drupal_get_form('commentz_form', $node);
     $additions['commentz_form'] = $build;
   }
+
   $additions += array(
     '#theme' => 'commentz_wrapper',
     '#node' => $node,
@@ -184,9 +214,9 @@ function commentz_response_view($response) {
     '#response' => $response,
   );
 
-  global $user;
   // User can delete only their own response.
-  if ($user->uid == $response['uid']) {
+  global $user;
+  if ((user_access('delete own commentz') && $user->uid == $response['uid']) || user_access('delete commentz')) {
     $build['#delete_link'] = theme('commentz_response_delete_link', array('response_id' => $response['cid']));
   } else {
     $build['#delete_link'] = NULL;
@@ -196,9 +226,8 @@ function commentz_response_view($response) {
 
 function commentz_get_avatar($uid) {
 
-  $user = user_load((int)$uid);
+  $user = user_load(intval($uid));
   global $user;
-  // @todo get the avatar by user id.
   $variables = array(
     'style_name' => 'commentz_avatar',
     'path' => file_load($user->picture)->uri,
@@ -223,38 +252,42 @@ function commentz_get_avatar($uid) {
  */
 function commentz_links($commentz, $node) {
   $links = array();
-  // @todo add right permissions.
-  if (1==1 || user_access('administer comments') && user_access('post comments')) {
+  global $user;
+
+
+  if (user_access('delete own commentz') && $commentz['uid'] == $user->uid) {
     $links['commentz-delete'] = array(
       'title' => t('delete'),
       'href' => "commentz/" . $commentz['cid'] . "/delete",
       'html' => TRUE,
       'attributes' => array('class' => array('use-ajax'))
     );
+  }
+  if (user_access('edit own commentz') && $commentz['uid'] == $user->uid) {
     $links['commentz-edit'] = array(
       'title' => t('edit'),
       'href' => "commentz/" . $commentz['cid'] . "/edit",
       'html' => TRUE,
       'attributes' => array('class' => array('use-ajax'))
     );
+  }
 
+  if (user_access('post commentz')) {
     $links['commentz-add-response'] = array(
-      'title' => t('add a response'),
+      'title' => t('reply'),
       'href' => "javascript:;",
       'html' => FALSE,
       'external' => TRUE,
       'attributes' => array('class' => array('commentz-add-response-link'))
     );
+  } else {
+    $links['commentz-add-response'] = array(
+      'title' => t('login to reply'),
+      'href' => "user/login",
+      'attributes' => array('class' => array('commentz-add-response-link'))
+    );
   }
   return $links;
-}
-
-function commentz_response_delete_link($response_id) {
-  $links['commentz-delete-response'] = array(
-    'title' => t('delete'),
-    'href' => "commentz/response/" . $response_id . "/delete",
-    'attributes' => array('class' => array('commentz-delete-response-link'))
-  );
 }
 
 function commentz_load($cid) {
@@ -277,6 +310,20 @@ function commentz_response_delete($response_id) {
   ->condition('cid', $response_id, '=')
   ->execute();
 }
+
+/**
+ *
+ * Implements hook_node_delete().
+ *
+ * Delete all the commentz for the node that just got
+ * deleted.
+ */
+function commentz_node_delete($nid) {
+  db_delete('commentz')
+    ->condition('nid', $nid, '=')
+    ->execute();
+}
+
 
 function _debug($data, $die = true) {
   echo "<pre>";

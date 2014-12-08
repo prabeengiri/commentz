@@ -40,6 +40,8 @@ function commentz_confirm_delete_form_submit(&$form, &$form_state) {
   // Clear the cache so an anonymous user sees that his comment was deleted.
   cache_clear_all();
   $commands[] = ajax_command_remove('#commentz-inner-' . $commentz['cid']);
+  // Custom command.
+  $commands[] = array('command' => 'updateCommentzCounter');
   return array('#type' => 'ajax', '#commands' => $commands);
 }
 
@@ -82,7 +84,6 @@ function commentz_form($form, $form_state, $node) {
 function commentz_prepare_submit($form, &$form_state) {
   global $user, $language;
 
-
   $commentz = new stdClass;
 
   $commentz->uid = $user->uid;
@@ -115,6 +116,10 @@ function commentz_form_validate($form, &$form_state) {
 }
 
 function commentz_form_submit(&$form, &$form_state) {
+
+  if (form_get_errors()) {
+    return;
+  }
 
   $node = $form['#node'];
   $commentz = commentz_prepare_submit($form, $form_state);
@@ -174,12 +179,12 @@ function commentz_response_form($form, $form_state, $commentz) {
   $form['#prefix'] = "<div class='commentz-response-inner hide commentz-response-form'>";
   $form['response'] = array(
     '#type' => 'textfield',
-    '#attributes' => array('placeholder' => 'Add response and press enter !!', 'class' => array('commentz-response-textfield')),
+    '#attributes' => array('placeholder' => t('Add a reply'), 'class' => array('commentz-response-textfield')),
     '#id' => 'commentz-response-input-' . $commentz['cid'],
   );
   $form['submit'] = array(
     '#type' => 'submit',
-    '#value' => 'Respond',
+    '#value' => t('Reply'),
     '#ajax' => array(
       'callback' => 'commentz_response_form_submit',
       'wrapper' => 'commentz-response-wrapper',
@@ -192,7 +197,17 @@ function commentz_response_form($form, $form_state, $commentz) {
   return $form;
 }
 
+function commentz_response_form_validate($form, &$form_state) {
+  if (empty($form_state['values']['response'])) {
+    form_set_error('response', '');
+  }
+}
+
 function commentz_response_form_submit(&$form, &$form_state) {
+  if (form_get_errors()) {
+    return;
+  }
+
   $commentz = $form['#commentz'];
   $response = new stdClass;
   $response->pid = $commentz['cid'];

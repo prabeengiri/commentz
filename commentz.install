@@ -89,6 +89,68 @@ function commentz_schema() {
       ),
     ),
   );
+
+  $schema['node_commentz_statistics'] = array(
+    'description' => 'Maintains statistics of node and commentz posts to show "new" and "updated" flags.',
+    'fields' => array(
+      'nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'The {node}.nid for which the statistics are compiled.',
+      ),
+      'cid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'The {comment}.cid of the last commentz.',
+      ),
+      'last_commentz_timestamp' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'The Unix timestamp of the last commentz that was posted within this node, from {comment}.changed.',
+      ),
+      'last_commentz_name' => array(
+        'type' => 'varchar',
+        'length' => 60,
+        'not null' => FALSE,
+        'description' => 'The name of the latest author to post a commentz on this node, from {comment}.name.',
+      ),
+      'last_commentz_uid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'The user ID of the latest author to post a commentz on this node, from {comment}.uid.',
+      ),
+      'commentz_count' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'The total number of commentz on this node.',
+      ),
+    ),
+    'primary key' => array('nid'),
+    'indexes' => array(
+      'node_commentz_timestamp' => array('last_commentz_timestamp'),
+      'commentz_count' => array('commentz_count'),
+      'last_commentz_uid' => array('last_commentz_uid'),
+    ),
+    'foreign keys' => array(
+      'statistics_node' => array(
+        'table' => 'node',
+        'columns' => array('nid' => 'nid'),
+      ),
+      'last_commentz_author' => array(
+        'table' => 'users',
+        'columns' => array(
+          'last_commentz_uid' => 'uid',
+        ),
+      ),
+    ),
+  );
   return $schema;
 }
 

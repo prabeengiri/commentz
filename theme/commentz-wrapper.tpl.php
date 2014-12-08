@@ -39,7 +39,7 @@
 <div id="commentz" class="<?php print $classes; ?>"<?php print $attributes; ?>>
 
   <?php if (1== 1 || $node->type != 'forum'): ?>
-  <div class="commentz-counter"><?php print $count; ?> <?php  print t('Responses'); ?></div>
+  <div class="commentz-counter"><?php print $count; ?> <?php   print ($count == 1) ? t('Response') : t("Responses"); ?></div>
   <?php endif; ?>
 
   <div class="commentz-section">

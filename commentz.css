@@ -92,6 +92,12 @@ span.commentz-author-name a{
 form#commentz-form {
 	margin:5px;
 }
+.show {
+	display:block;
+}
+.hide {
+	display:none;
+}
 /******************* CommentZ Response *****************/
 .commentz-response-inner {
   margin:3px 0;
@@ -109,7 +115,16 @@ form#commentz-form {
 	padding-top:10px;
 	display:none;
 }
-.commentz-response-delete-link {
+a.commentz-response-delete-link {
 	vertical-align:middle;
 	display:none;
+	color:#777777;
+}
+a.commentz-response-delete-link:hover {
+  color:#777777;
+}
+.form-item-response {
+	width: 84%;
+  float: left;
+  margin-right: 6px;
 }

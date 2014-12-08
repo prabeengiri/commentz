@@ -3,11 +3,10 @@
     attach : function(context, settings) {
       
       $(".commentz-delete-cancel").click(function() {
-        var $confirmationForm = $(this).parents('form#commentz-confirm-delete-form').fadeOut('slow');
-        // Remove from the dom, as we don't want it anymore.
-        setTimeout(function() {
-          $confirmationForm.remove();
-        }, 2000);
+        var $confirmationForm = $(this).parents('form#commentz-confirm-delete-form');
+        $confirmationForm.parents('.commentz-links').find('ul.links').removeClass('hide').addClass('show');
+        $confirmationForm.remove();
+        
       });
       
       $('.commentz-edit-cancel').click(function() {
@@ -16,16 +15,7 @@
         $(this).parents('.commentz-form').hide().remove();
       });
       
-      // Prevent multiple confirm delete form.
-      // @todo use event delegation
-      $('li.commentz-delete a').click(function(e) {
-        if (!$(this).parents('.commentz-links').find('.commentz-delete-confirm').length) {
-          e.preventDefault();
-          return false;
-        }
-      });
-      
-      // Toggle comment response form
+      // Toggle comment response form.
       $('a.commentz-add-response-link').on('click', function() {
          var $response_form = $(this)
           .parents('.commentz-body')
@@ -39,10 +29,18 @@
         }, 500);
         */
       });
+      
       // Show response delete link on hover.
       $('.commentz-response-inner').once().hover(function() {
         $(this).find('.commentz-response-delete-link').toggle();
       });
     }
+  };
+  
+  /**
+   * Update the comment counter.
+   */
+  Drupal.ajax.prototype.commands.updateCommentzCounter =  function(ajax, response, status) {
+    alert('yes');
   };
 }(jQuery));
